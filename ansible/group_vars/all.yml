@@ -1,0 +1,28 @@
+---
+# Global variables for all hosts
+# Based on VirtualizationHowTo article configuration
+
+# Common settings
+automation_user: automation
+system_timezone: "UTC"
+enable_monitoring: true
+
+# Security settings
+enable_ufw: true
+enable_auto_updates: true
+disable_password_auth: false  # Set to true after SSH keys are configured
+
+# UFW firewall rules
+ufw_rules:
+  - { rule: allow, port: 22, comment: "SSH access" }
+  - { rule: allow, port: 9100, comment: "Prometheus Node Exporter" }
+
+# Node Exporter version
+node_exporter_version: "1.6.1"
+
+# NTP servers
+ntp_servers:
+  - 0.pool.ntp.org
+  - 1.pool.ntp.org
+  - 2.pool.ntp.org
+  - 3.pool.ntp.org

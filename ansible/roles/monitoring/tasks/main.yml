@@ -1,0 +1,61 @@
+---
+# Monitoring setup with Prometheus Node Exporter
+# Based on VirtualizationHowTo article monitoring patterns
+
+- name: Create prometheus user
+  user:
+    name: prometheus
+    system: yes
+    shell: /bin/false
+    home: /var/lib/prometheus
+    createhome: no
+
+- name: Download Node Exporter
+  get_url:
+    url: "https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version | default('1.6.1') }}/node_exporter-{{ node_exporter_version | default('1.6.1') }}.linux-amd64.tar.gz"
+    dest: "/tmp/node_exporter.tar.gz"
+    mode: '0644'
+
+- name: Extract Node Exporter
+  unarchive:
+    src: "/tmp/node_exporter.tar.gz"
+    dest: "/tmp"
+    remote_src: yes
+
+- name: Copy Node Exporter binary
+  copy:
+    src: "/tmp/node_exporter-{{ node_exporter_version | default('1.6.1') }}.linux-amd64/node_exporter"
+    dest: "/usr/local/bin/node_exporter"
+    mode: '0755'
+    owner: prometheus
+    group: prometheus
+    remote_src: yes
+
+- name: Create Node Exporter systemd service
+  template:
+    src: node_exporter.service.j2
+    dest: /etc/systemd/system/node_exporter.service
+  notify:
+    - reload systemd
+    - restart node_exporter
+
+- name: Start and enable Node Exporter
+  service:
+    name: node_exporter
+    state: started
+    enabled: yes
+
+- name: Configure UFW for Node Exporter
+  ufw:
+    rule: allow
+    port: '9100'
+    comment: "Prometheus Node Exporter"
+  when: enable_ufw | default(true)
+
+- name: Clean up downloaded files
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "/tmp/node_exporter.tar.gz"
+    - "/tmp/node_exporter-{{ node_exporter_version | default('1.6.1') }}.linux-amd64"

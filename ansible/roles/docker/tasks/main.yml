@@ -1,0 +1,60 @@
+---
+# Docker installation and configuration
+# Based on VirtualizationHowTo article Docker patterns
+
+- name: Install required packages for Docker
+  package:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+    state: present
+
+- name: Add Docker GPG key
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+
+- name: Add Docker repository
+  apt_repository:
+    repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+    state: present
+
+- name: Install Docker
+  package:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-compose-plugin
+    state: present
+    update_cache: yes
+
+- name: Add users to docker group
+  user:
+    name: "{{ item }}"
+    groups: docker
+    append: yes
+  loop: "{{ docker_users | default([]) }}"
+
+- name: Start and enable Docker
+  service:
+    name: docker
+    state: started
+    enabled: yes
+
+- name: Install Docker Compose (standalone)
+  pip:
+    name: docker-compose
+    state: present
+  when: install_docker_compose | default(true)
+
+- name: Create Docker daemon configuration
+  template:
+    src: daemon.json.j2
+    dest: /etc/docker/daemon.json
+    backup: yes
+  notify: restart docker
+  when: docker_daemon_config is defined

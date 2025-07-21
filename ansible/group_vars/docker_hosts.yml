@@ -1,0 +1,24 @@
+---
+# Variables for Docker hosts
+
+# Docker users (will be added to docker group)
+docker_users:
+  - ubuntu
+  - automation
+
+# Install Docker Compose
+install_docker_compose: true
+
+# Docker daemon configuration
+docker_daemon_config:
+  log-driver: "json-file"
+  log-opts:
+    max-size: "10m"
+    max-file: "3"
+  storage-driver: "overlay2"
+
+# Additional UFW rules for Docker hosts
+ufw_rules:
+  - { rule: allow, port: 22, comment: "SSH access" }
+  - { rule: allow, port: 9100, comment: "Prometheus Node Exporter" }
+  - { rule: allow, port: 2376, comment: "Docker daemon API" }

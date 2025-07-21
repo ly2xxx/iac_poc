@@ -1,0 +1,9 @@
+Great! Now it's proved you can access www.virtualizationhowto.com/2025/07/run-your-home-lab-with-infrastructure-as-code-like-a-boss/, let's do some serious software development
+https://github.com/ly2xxx/iac_poc
+I need to develop a new project using my development crew: 
+Feature: Create iac_poc tutorial project based on  www.virtualizationhowto.com/2025/07/run-your-home-lab-with-infrastructure-as-code-like-a-boss/, use 'grep-code' tool to study similar solutions on GitHub if necessary
+ 
+1. Use MCP_DOCKER tools to create a iac_poc project in my github https://github.com/ly2xxx/ if doesn't exist. If exist checkout the project's main branch and continue. 
+2. Use claude-code-developer to implement a step-by-step guide with code if necessary based on www.virtualizationhowto.com/2025/07/run-your-home-lab-with-infrastructure-as-code-like-a-boss/. 
+3. Use gemini-qa-agent to test the code and step-by-step solutions. 
+4. After all tests passed by gemini-qa-agent, write README.md with step-by-step instructions on how to setup and run the home lab on a windows 11 PC, and commit the final implementation when you are comfortable with the outcomes to https://github.com/ly2xxx/iac_poc https://github.com/ly2xxx/iac_poc using MCP_DOCKER tools. Make sure you quote www.virtualizationhowto.com/2025/07/run-your-home-lab-with-infrastructure-as-code-like-a-boss/ and give credits to the author.

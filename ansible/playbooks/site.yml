@@ -1,0 +1,35 @@
+---
+# Main site playbook for home lab configuration
+# Based on VirtualizationHowTo article patterns
+
+- hosts: all
+  become: true
+  gather_facts: true
+  roles:
+    - role: common
+      tags: [common, always]
+    - role: security
+      tags: [security]
+    - role: monitoring
+      tags: [monitoring]
+
+- hosts: docker_hosts
+  become: true
+  roles:
+    - role: docker
+      tags: [docker]
+
+- hosts: k8s_nodes
+  become: true
+  roles:
+    - role: kubernetes
+      tags: [kubernetes, k8s]
+
+- hosts: windows_servers
+  gather_facts: true
+  roles:
+    - role: windows_common
+      tags: [windows, common]
+    - role: windows_domain
+      tags: [windows, domain]
+      when: ansible_hostname in groups['domain_controllers']

@@ -1,0 +1,39 @@
+---
+# UFW firewall configuration
+
+- name: Install UFW
+  package:
+    name: ufw
+    state: present
+
+- name: Reset UFW to defaults
+  ufw:
+    state: reset
+  when: ufw_reset | default(false)
+
+- name: Set UFW default policies
+  ufw:
+    direction: "{{ item.direction }}"
+    policy: "{{ item.policy }}"
+  loop:
+    - { direction: 'incoming', policy: 'deny' }
+    - { direction: 'outgoing', policy: 'allow' }
+
+- name: Configure UFW rules
+  ufw:
+    rule: "{{ item.rule }}"
+    port: "{{ item.port | default(omit) }}"
+    proto: "{{ item.proto | default(omit) }}"
+    src: "{{ item.src | default(omit) }}"
+    comment: "{{ item.comment | default(omit) }}"
+  loop: "{{ ufw_rules | default([]) }}"
+
+- name: Allow SSH
+  ufw:
+    rule: allow
+    port: ssh
+    comment: "SSH access"
+
+- name: Enable UFW
+  ufw:
+    state: enabled

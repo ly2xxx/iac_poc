@@ -1,0 +1,48 @@
+---
+# Security configuration tasks
+# Based on VirtualizationHowTo article security practices
+
+- name: Install fail2ban
+  package:
+    name: fail2ban
+    state: present
+
+- name: Configure fail2ban for SSH
+  template:
+    src: jail.local.j2
+    dest: /etc/fail2ban/jail.local
+    backup: yes
+  notify: restart fail2ban
+
+- name: Configure UFW firewall
+  include_tasks: ufw.yml
+  when: enable_ufw | default(true)
+
+- name: Disable root SSH login
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^PermitRootLogin'
+    line: 'PermitRootLogin no'
+    state: present
+  notify: restart ssh
+
+- name: Disable password authentication
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^PasswordAuthentication'
+    line: 'PasswordAuthentication no'
+    state: present
+  notify: restart ssh
+  when: disable_password_auth | default(false)
+
+- name: Configure automatic updates
+  package:
+    name: unattended-upgrades
+    state: present
+  when: enable_auto_updates | default(true)
+
+- name: Start and enable fail2ban
+  service:
+    name: fail2ban
+    state: started
+    enabled: yes

@@ -1,0 +1,54 @@
+---
+# Common tasks for all Linux hosts
+# Based on VirtualizationHowTo article
+
+- name: Update package cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  when: ansible_os_family == "Debian"
+
+- name: Install essential packages
+  package:
+    name:
+      - curl
+      - wget
+      - vim
+      - git
+      - htop
+      - ntp
+      - unzip
+      - rsync
+    state: present
+
+- name: Configure NTP
+  template:
+    src: ntp.conf.j2
+    dest: /etc/ntp.conf
+    backup: yes
+  notify: restart ntp
+
+- name: Start and enable NTP
+  service:
+    name: ntp
+    state: started
+    enabled: yes
+
+- name: Create automation user
+  user:
+    name: "{{ automation_user | default('automation') }}"
+    groups: sudo
+    shell: /bin/bash
+    createhome: yes
+    state: present
+
+- name: Configure SSH for automation user
+  authorized_key:
+    user: "{{ automation_user | default('automation') }}"
+    key: "{{ automation_ssh_key }}"
+    state: present
+  when: automation_ssh_key is defined
+
+- name: Set timezone
+  timezone:
+    name: "{{ system_timezone | default('UTC') }}"

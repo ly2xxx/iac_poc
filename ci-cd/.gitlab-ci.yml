@@ -1,0 +1,209 @@
+# GitLab CI/CD Pipeline for Infrastructure as Code
+# Based on VirtualizationHowTo article patterns
+
+stages:
+  - validate
+  - plan
+  - build
+  - deploy
+  - test
+
+variables:
+  TF_WORKING_DIR: terraform
+  PACKER_TEMPLATES_DIR: packer/templates
+  ANSIBLE_PLAYBOOK: ansible/playbooks/site.yml
+  TF_STATE_NAME: homelab
+  
+# Global before_script
+before_script:
+  - echo "Starting IaC pipeline..."
+  - export TF_IN_AUTOMATION=true
+
+# Validation stage
+validate_terraform:
+  stage: validate
+  image: hashicorp/terraform:latest
+  script:
+    - cd $TF_WORKING_DIR
+    - terraform fmt -check
+    - terraform init -backend=false
+    - terraform validate
+  only:
+    - merge_requests
+    - main
+
+validate_packer:
+  stage: validate
+  image: hashicorp/packer:latest
+  script:
+    - cd $PACKER_TEMPLATES_DIR
+    - find . -name "*.json" -exec packer validate {} \;
+  only:
+    - merge_requests
+    - main
+
+validate_ansible:
+  stage: validate
+  image: ansible/ansible:latest
+  script:
+    - cd ansible
+    - ansible-lint playbooks/
+    - ansible-playbook --syntax-check $ANSIBLE_PLAYBOOK -i inventory/hosts.yml
+  only:
+    - merge_requests
+    - main
+
+# Planning stage
+terraform_plan:
+  stage: plan
+  image: hashicorp/terraform:latest
+  script:
+    - cd $TF_WORKING_DIR
+    - terraform init
+    - terraform plan -out=plan.tfplan
+  artifacts:
+    paths:
+      - $TF_WORKING_DIR/plan.tfplan
+    expire_in: 1 week
+  only:
+    - merge_requests
+    - main
+
+# Build stage (Packer templates)
+build_debian_template:
+  stage: build
+  image: hashicorp/packer:latest
+  script:
+    - cd $PACKER_TEMPLATES_DIR/debian-12
+    - packer build -var "proxmox_url=$PROXMOX_URL" -var "proxmox_username=$PROXMOX_USERNAME" -var "proxmox_password=$PROXMOX_PASSWORD" -var "proxmox_node=$PROXMOX_NODE" debian.json
+  only:
+    - main
+  when: manual
+  allow_failure: true
+
+build_ubuntu_template:
+  stage: build
+  image: hashicorp/packer:latest
+  script:
+    - cd $PACKER_TEMPLATES_DIR/ubuntu-22.04
+    - packer build -var "proxmox_url=$PROXMOX_URL" -var "proxmox_username=$PROXMOX_USERNAME" -var "proxmox_password=$PROXMOX_PASSWORD" -var "proxmox_node=$PROXMOX_NODE" ubuntu.json
+  only:
+    - main
+  when: manual
+  allow_failure: true
+
+build_windows_template:
+  stage: build
+  image: hashicorp/packer:latest
+  script:
+    - cd $PACKER_TEMPLATES_DIR/windows-server-2022
+    - packer build -var "proxmox_url=$PROXMOX_URL" -var "proxmox_username=$PROXMOX_USERNAME" -var "proxmox_password=$PROXMOX_PASSWORD" -var "proxmox_node=$PROXMOX_NODE" windows.json
+  only:
+    - main
+  when: manual
+  allow_failure: true
+
+# Deploy stage
+deploy_k8s_cluster:
+  stage: deploy
+  image: hashicorp/terraform:latest
+  script:
+    - cd $TF_WORKING_DIR/environments/k8s-cluster
+    - terraform init
+    - terraform apply -auto-approve
+  dependencies:
+    - terraform_plan
+  only:
+    - main
+  when: manual
+  environment:
+    name: k8s-cluster
+    action: start
+
+deploy_windows_domain:
+  stage: deploy
+  image: hashicorp/terraform:latest
+  script:
+    - cd $TF_WORKING_DIR/environments/windows-domain
+    - terraform init
+    - terraform apply -auto-approve
+  dependencies:
+    - terraform_plan
+  only:
+    - main
+  when: manual
+  environment:
+    name: windows-domain
+    action: start
+
+# Configuration with Ansible
+configure_infrastructure:
+  stage: deploy
+  image: ansible/ansible:latest
+  script:
+    - cd ansible
+    - ansible-galaxy install -r requirements.yml || true
+    - ansible-playbook -i inventory/hosts.yml playbooks/site.yml --diff
+  dependencies:
+    - deploy_k8s_cluster
+    - deploy_windows_domain
+  only:
+    - main
+  when: manual
+  allow_failure: true
+
+# Test stage
+test_infrastructure:
+  stage: test
+  image: ansible/ansible:latest
+  script:
+    - cd ansible
+    - ansible all -i inventory/hosts.yml -m ping
+    - ansible-playbook -i inventory/hosts.yml playbooks/test.yml
+  dependencies:
+    - configure_infrastructure
+  only:
+    - main
+  when: manual
+  allow_failure: true
+
+# Drift detection (scheduled)
+terraform_drift_detection:
+  stage: plan
+  image: hashicorp/terraform:latest
+  script:
+    - cd $TF_WORKING_DIR
+    - terraform init
+    - terraform plan -detailed-exitcode
+  only:
+    - schedules
+  allow_failure: true
+
+# Cleanup jobs
+cleanup_k8s_cluster:
+  stage: deploy
+  image: hashicorp/terraform:latest
+  script:
+    - cd $TF_WORKING_DIR/environments/k8s-cluster
+    - terraform init
+    - terraform destroy -auto-approve
+  only:
+    - main
+  when: manual
+  environment:
+    name: k8s-cluster
+    action: stop
+
+cleanup_windows_domain:
+  stage: deploy
+  image: hashicorp/terraform:latest
+  script:
+    - cd $TF_WORKING_DIR/environments/windows-domain
+    - terraform init
+    - terraform destroy -auto-approve
+  only:
+    - main
+  when: manual
+  environment:
+    name: windows-domain
+    action: stop

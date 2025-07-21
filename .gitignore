@@ -1,0 +1,86 @@
+# Infrastructure as Code .gitignore
+# Based on best practices from VirtualizationHowTo article
+
+# Terraform
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+!*.tfvars.example
+.terraform/
+.terraform.lock.hcl
+crash.log
+crash.*.log
+terraform.rc
+
+# Packer
+packer_cache/
+*.box
+
+# Ansible
+*.retry
+.vault_pass
+vault_password_file
+*.log
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# SSH keys
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Certificates
+*.crt
+*.csr
+*.cert
+*.p12
+*.pfx
+
+# Backup files
+*.backup
+*.bak
+*~
+
+# Local configuration
+local_settings.py
+config.local.yml
+settings.local.json
+
+# Documentation build
+_build/
+dist/
+build/

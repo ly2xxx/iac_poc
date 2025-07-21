@@ -1,0 +1,13 @@
+{
+  "log-driver": "{{ docker_daemon_config.get('log-driver', 'json-file') }}",
+  "log-opts": {
+{% for key, value in docker_daemon_config.get('log-opts', {}).items() %}
+    "{{ key }}": "{{ value }}"{% if not loop.last %},{% endif %}
+{% endfor %}
+  },
+  "storage-driver": "{{ docker_daemon_config.get('storage-driver', 'overlay2') }}",
+  "exec-opts": ["native.cgroupdriver=systemd"],
+  "live-restore": true,
+  "userland-proxy": false,
+  "experimental": false
+}

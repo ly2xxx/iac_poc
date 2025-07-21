@@ -1,0 +1,114 @@
+---
+# Test playbook to verify infrastructure is working
+# Based on VirtualizationHowTo article testing patterns
+
+- hosts: all
+  gather_facts: true
+  tasks:
+    - name: Test connectivity
+      ping:
+      tags: [connectivity]
+
+    - name: Check system uptime
+      command: uptime
+      register: uptime_result
+      tags: [system]
+
+    - name: Display uptime
+      debug:
+        var: uptime_result.stdout
+      tags: [system]
+
+    - name: Check disk space
+      shell: df -h
+      register: disk_space
+      tags: [storage]
+
+    - name: Display disk space
+      debug:
+        var: disk_space.stdout_lines
+      tags: [storage]
+
+    - name: Check memory usage
+      shell: free -h
+      register: memory_usage
+      tags: [memory]
+
+    - name: Display memory usage
+      debug:
+        var: memory_usage.stdout_lines
+      tags: [memory]
+
+- hosts: linux_hosts
+  become: true
+  tasks:
+    - name: Check if UFW is active
+      command: ufw status
+      register: ufw_status
+      tags: [security]
+
+    - name: Display UFW status
+      debug:
+        var: ufw_status.stdout_lines
+      tags: [security]
+
+    - name: Check if fail2ban is running
+      service:
+        name: fail2ban
+        state: started
+      register: fail2ban_status
+      tags: [security]
+
+    - name: Check Node Exporter status
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}:9100/metrics"
+        method: GET
+        timeout: 10
+      register: node_exporter_test
+      ignore_errors: yes
+      tags: [monitoring]
+
+    - name: Display Node Exporter status
+      debug:
+        msg: "Node Exporter is {% if node_exporter_test.status == 200 %}working{% else %}not responding{% endif %}"
+      tags: [monitoring]
+
+- hosts: docker_hosts
+  become: true
+  tasks:
+    - name: Check Docker service status
+      service:
+        name: docker
+        state: started
+      register: docker_status
+      tags: [docker]
+
+    - name: Run Docker hello-world test
+      docker_container:
+        name: test-container
+        image: hello-world
+        state: started
+        auto_remove: yes
+      register: docker_test
+      tags: [docker]
+
+    - name: Display Docker test result
+      debug:
+        msg: "Docker test {% if docker_test.changed %}successful{% else %}failed{% endif %}"
+      tags: [docker]
+
+- hosts: windows_hosts
+  tasks:
+    - name: Check Windows service status
+      win_service_info:
+        name: 
+          - Spooler
+          - BITS
+          - Themes
+      register: windows_services
+      tags: [windows]
+
+    - name: Display Windows services status
+      debug:
+        var: windows_services
+      tags: [windows]

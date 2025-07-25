@@ -1,0 +1,112 @@
+{
+  "variables": {
+    "proxmox_url": "{{env `PROXMOX_URL`}}",
+    "proxmox_username": "{{env `PROXMOX_USERNAME`}}",
+    "proxmox_password": "{{env `PROXMOX_PASSWORD`}}",
+    "proxmox_node": "{{env `PROXMOX_NODE`}}",
+    "vm_id": "9000",
+    "vm_name": "debian-12-template",
+    "template_description": "Debian 12 template created with Packer",
+    "iso_file": "local:iso/debian-12.2.0-amd64-netinst.iso",
+    "storage_pool": "local-zfs",
+    "disk_size": "20G",
+    "memory": "2048",
+    "cores": "2",
+    "ssh_username": "debian",
+    "ssh_password": "debian"
+  },
+  "builders": [
+    {
+      "type": "proxmox",
+      "proxmox_url": "{{user `proxmox_url`}}",
+      "username": "{{user `proxmox_username`}}",
+      "password": "{{user `proxmox_password`}}",
+      "node": "{{user `proxmox_node`}}",
+      "insecure_skip_tls_verify": true,
+      
+      "vm_id": "{{user `vm_id`}}",
+      "vm_name": "{{user `vm_name`}}",
+      "template_description": "{{user `template_description`}}",
+      
+      "iso_file": "{{user `iso_file`}}",
+      "iso_storage_pool": "local",
+      "unmount_iso": true,
+      
+      "memory": "{{user `memory`}}",
+      "cores": "{{user `cores`}}",
+      "sockets": "1",
+      "os": "l26",
+      "cpu_type": "host",
+      "machine": "q35",
+      
+      "scsi_controller": "virtio-scsi-pci",
+      "disks": [
+        {
+          "type": "scsi",
+          "disk_size": "{{user `disk_size`}}",
+          "storage_pool": "{{user `storage_pool`}}",
+          "storage_pool_type": "zfspool",
+          "format": "raw"
+        }
+      ],
+      
+      "network_adapters": [
+        {
+          "model": "virtio",
+          "bridge": "vmbr0"
+        }
+      ],
+      
+      "cloud_init": true,
+      "cloud_init_storage_pool": "{{user `storage_pool`}}",
+      
+      "boot_command": [
+        "<esc><wait>",
+        "install <wait>",
+        "preseed/url=http://{{ .HTTPIP }}:{{ .HTTPPort }}/preseed.cfg <wait>",
+        "debian-installer=en_US.UTF-8 <wait>",
+        "auto <wait>",
+        "locale=en_US.UTF-8 <wait>",
+        "kbd-chooser/method=us <wait>",
+        "keyboard-configuration/xkb-keymap=us <wait>",
+        "netcfg/get_hostname=debian <wait>",
+        "netcfg/get_domain=localdomain <wait>",
+        "fb=false <wait>",
+        "debconf/frontend=noninteractive <wait>",
+        "console-setup/ask_detect=false <wait>",
+        "console-keymaps-at/keymap=us <wait>",
+        "grub-installer/bootdev=/dev/sda <wait>",
+        "<enter><wait>"
+      ],
+      "boot_wait": "10s",
+      
+      "http_directory": ".",
+      "http_bind_address": "0.0.0.0",
+      "http_port_min": 8000,
+      "http_port_max": 9000,
+      
+      "ssh_username": "{{user `ssh_username`}}",
+      "ssh_password": "{{user `ssh_password`}}",
+      "ssh_timeout": "20m",
+      "ssh_port": 22,
+      
+      "qemu_agent": true
+    }
+  ],
+  "provisioners": [
+    {
+      "type": "shell",
+      "inline": [
+        "sudo apt-get update",
+        "sudo apt-get upgrade -y",
+        "sudo apt-get install -y qemu-guest-agent cloud-init",
+        "sudo systemctl enable qemu-guest-agent",
+        "sudo systemctl enable ssh"
+      ]
+    },
+    {
+      "type": "shell",
+      "script": "../../scripts/cleanup.sh"
+    }
+  ]
+}

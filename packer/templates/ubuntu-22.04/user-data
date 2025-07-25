@@ -1,0 +1,82 @@
+#cloud-config
+# Ubuntu 22.04 Autoinstall Configuration
+# Based on VirtualizationHowTo article
+
+autoinstall:
+  version: 1
+  locale: en_US.UTF-8
+  keyboard:
+    layout: us
+  
+  network:
+    network:
+      version: 2
+      ethernets:
+        ens18:
+          dhcp4: true
+  
+  storage:
+    layout:
+      name: direct
+    config:
+      - type: disk
+        id: disk0
+        match:
+          size: largest
+      - type: partition
+        id: boot-partition
+        device: disk0
+        size: 1G
+        flag: boot
+      - type: partition
+        id: root-partition
+        device: disk0
+        size: -1
+      - type: format
+        id: boot-fs
+        volume: boot-partition
+        fstype: ext4
+      - type: format
+        id: root-fs
+        volume: root-partition
+        fstype: ext4
+      - type: mount
+        id: boot-mount
+        device: boot-fs
+        path: /boot
+      - type: mount
+        id: root-mount
+        device: root-fs
+        path: /
+  
+  identity:
+    hostname: ubuntu
+    username: ubuntu
+    password: '$6$rounds=4096$8dkK1P/oE$2DGKKt0wLlTVJ7USY.0jN9du8FetmEr51yzSzjKNp5jYo2CjI3YPSjZuKKE8HbhUb.8MoNRlHF6NnN6TjOyxm1'  # ubuntu
+  
+  ssh:
+    install-server: true
+    allow-pw: true
+  
+  packages:
+    - openssh-server
+    - qemu-guest-agent
+    - cloud-init
+    - docker.io
+    - curl
+    - wget
+    - vim
+    - htop
+  
+  user-data:
+    users:
+      - name: ubuntu
+        groups: [sudo, docker]
+        shell: /bin/bash
+        sudo: ['ALL=(ALL) NOPASSWD:ALL']
+        ssh_pwauth: true
+  
+  late-commands:
+    - curtin in-target --target=/target -- systemctl enable qemu-guest-agent
+    - curtin in-target --target=/target -- systemctl enable ssh
+    - curtin in-target --target=/target -- systemctl enable docker
